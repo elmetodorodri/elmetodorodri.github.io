@@ -99,7 +99,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 </style>
 </head>
 <body>
-
 <div class="topbar">
   <div style="display:flex;align-items:center;">
     <a class="logo" href="https://www.instagram.com/el.metodo.rodri/" target="_blank">El Método Rodri</a>
@@ -271,75 +270,103 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 </div>
 
 <div class="footer">
-  Datos oficiales ONPE · Actualización cada 5 minutos via GitHub Actions<br>
+  Datos oficiales ONPE · Actualización automática cada 2 minutos<br>
   <a href="https://www.instagram.com/el.metodo.rodri/" target="_blank">@el.metodo.rodri</a> · El Método Rodri
 </div>
 
 <script>
+const W = 'https://onpe-proxy.elmetodorodri.workers.dev';
 function fmt(n){return Number(n).toLocaleString('es-PE');}
+
+async function api(path){
+  const r = await fetch(W + path);
+  const j = await r.json();
+  return j.data;
+}
+
+function getCands(arr){
+  const kf = arr.find(p=>p.nombreCandidato&&p.nombreCandidato.includes('FUJIMORI'));
+  const rs = arr.find(p=>p.nombreCandidato&&p.nombreCandidato.includes('SANCHEZ'));
+  return {
+    kf: kf?{votos:kf.totalVotosValidos,pct:kf.porcentajeVotosValidos}:null,
+    rs: rs?{votos:rs.totalVotosValidos,pct:rs.porcentajeVotosValidos}:null,
+  };
+}
 
 async function load(){
   try{
-    const r = await fetch('datos.json?t='+Date.now());
-    const d = await r.json();
-    if(!d.success) throw new Error('Sin datos');
+    const [totales, part, tots_nac, part_nac, tots_ext, part_ext] = await Promise.all([
+      api('/resumen-general/totales?idEleccion=10&tipoFiltro=eleccion'),
+      api('/resumen-general/participantes?idEleccion=10&tipoFiltro=eleccion'),
+      api('/resumen-general/totales?idEleccion=10&tipoFiltro=ambito_geografico&idAmbitoGeografico=1'),
+      api('/resumen-general/participantes?idEleccion=10&tipoFiltro=ambito_geografico&idAmbitoGeografico=1'),
+      api('/resumen-general/totales?idEleccion=10&tipoFiltro=ambito_geografico&idAmbitoGeografico=2'),
+      api('/resumen-general/participantes?idEleccion=10&tipoFiltro=ambito_geografico&idAmbitoGeografico=2'),
+    ]);
+
+    const {kf,rs}       = getCands(part);
+    const {kf:kf_n,rs:rs_n} = getCands(part_nac||[]);
+    const {kf:kf_e,rs:rs_e} = getCands(part_ext||[]);
+
+    if(!kf||!rs) throw new Error('Candidatos no encontrados');
+
+    const diff  = Math.abs(kf.votos-rs.votos);
+    const lider = kf.pct>rs.pct?'KF':'RS';
 
     document.getElementById('error-banner').style.display='none';
     document.getElementById('dot').className='live-dot';
     document.getElementById('live-txt').textContent='EN VIVO';
-    document.getElementById('update-time').textContent='Actualizado: '+d.timestamp;
+    document.getElementById('update-time').textContent='Actualizado: '+new Date().toLocaleTimeString('es-PE');
 
-    const pct=d.totales.actasContabilizadas.toFixed(3);
+    const pct=totales.actasContabilizadas.toFixed(3);
     document.getElementById('actas-pct').textContent=pct+'%';
-    document.getElementById('actas-sub').textContent=fmt(d.totales.contabilizadas)+' de '+fmt(d.totales.totalActas)+' actas';
+    document.getElementById('actas-sub').textContent=fmt(totales.contabilizadas)+' de '+fmt(totales.totalActas)+' actas';
     document.getElementById('progress-fill').style.width=pct+'%';
 
-    document.getElementById('rs-pct').textContent=d.rs.pct.toFixed(3)+'%';
-    document.getElementById('rs-votos').textContent=fmt(d.rs.votos)+' votos';
-    document.getElementById('kf-pct').textContent=d.kf.pct.toFixed(3)+'%';
-    document.getElementById('kf-votos').textContent=fmt(d.kf.votos)+' votos';
-    document.getElementById('card-rs').className=d.lider==='RS'?'cand-card leader':'cand-card';
-    document.getElementById('card-kf').className=d.lider==='KF'?'cand-card leader':'cand-card';
-    document.getElementById('bar-rs').style.width=d.rs.pct.toFixed(3)+'%';
-    document.getElementById('bar-kf').style.width=d.kf.pct.toFixed(3)+'%';
-    document.getElementById('bar-rs-lbl').textContent='RS '+d.rs.pct.toFixed(3)+'%';
-    document.getElementById('bar-kf-lbl').textContent='KF '+d.kf.pct.toFixed(3)+'%';
+    document.getElementById('rs-pct').textContent=rs.pct.toFixed(3)+'%';
+    document.getElementById('rs-votos').textContent=fmt(rs.votos)+' votos';
+    document.getElementById('kf-pct').textContent=kf.pct.toFixed(3)+'%';
+    document.getElementById('kf-votos').textContent=fmt(kf.votos)+' votos';
+    document.getElementById('card-rs').className=lider==='RS'?'cand-card leader':'cand-card';
+    document.getElementById('card-kf').className=lider==='KF'?'cand-card leader':'cand-card';
+    document.getElementById('bar-rs').style.width=rs.pct.toFixed(3)+'%';
+    document.getElementById('bar-kf').style.width=kf.pct.toFixed(3)+'%';
+    document.getElementById('bar-rs-lbl').textContent='RS '+rs.pct.toFixed(3)+'%';
+    document.getElementById('bar-kf-lbl').textContent='KF '+kf.pct.toFixed(3)+'%';
 
-    const liderNombre=d.lider==='RS'?'Roberto Sánchez':'Keiko Fujimori';
-    document.getElementById('diff-num').textContent=fmt(d.diff);
+    const liderNombre=lider==='RS'?'Roberto Sánchez':'Keiko Fujimori';
+    document.getElementById('diff-num').textContent=fmt(diff);
     document.getElementById('diff-label').textContent=' votos de diferencia · '+liderNombre+' lidera';
-    const votosPendTotal=Math.round(d.totales.totalVotosValidos/(d.totales.actasContabilizadas/100)*((100-d.totales.actasContabilizadas)/100));
-    document.getElementById('diff-meta').innerHTML=fmt(d.totales.pendientesJee)+' actas pendientes<br>'+fmt(votosPendTotal)+' votos estimados por contar';
+    const votosPend=Math.round(totales.totalVotosValidos/(totales.actasContabilizadas/100)*((100-totales.actasContabilizadas)/100));
+    document.getElementById('diff-meta').innerHTML=fmt(totales.pendientesJee)+' actas pendientes<br>'+fmt(votosPend)+' votos estimados por contar';
 
-    function fillTcard(prefix, kf, rs, tots){
-      if(!kf||!rs) return;
-      document.getElementById(prefix+'-rs-pct').textContent=rs.pct.toFixed(3)+'%';
-      document.getElementById(prefix+'-kf-pct').textContent=kf.pct.toFixed(3)+'%';
-      document.getElementById(prefix+'-bar-rs').style.width=rs.pct.toFixed(2)+'%';
-      document.getElementById(prefix+'-bar-kf').style.width=kf.pct.toFixed(2)+'%';
-      const pctC=tots.actasContabilizadas!=null?tots.actasContabilizadas.toFixed(1)+'% contabilizado':'—';
-      const pend=tots.pendientesJee!=null?fmt(tots.pendientesJee)+' actas pend.':'';
+    function fillTcard(prefix,kfC,rsC,tots){
+      if(!kfC||!rsC) return;
+      document.getElementById(prefix+'-rs-pct').textContent=rsC.pct.toFixed(3)+'%';
+      document.getElementById(prefix+'-kf-pct').textContent=kfC.pct.toFixed(3)+'%';
+      document.getElementById(prefix+'-bar-rs').style.width=rsC.pct.toFixed(2)+'%';
+      document.getElementById(prefix+'-bar-kf').style.width=kfC.pct.toFixed(2)+'%';
+      const pctC=tots&&tots.actasContabilizadas!=null?tots.actasContabilizadas.toFixed(1)+'% contabilizado':'—';
+      const pend=tots&&tots.pendientesJee!=null?fmt(tots.pendientesJee)+' actas pend.':'';
       document.getElementById(prefix+'-meta').textContent=pctC+(pend?' · '+pend:'');
     }
-    fillTcard('t', d.kf, d.rs, d.totales);
-    fillTcard('n', d.kf_nac, d.rs_nac, d.tots_nac||{});
-    fillTcard('e', d.kf_ext, d.rs_ext, d.tots_ext||{});
+    fillTcard('t',kf,rs,totales);
+    fillTcard('n',kf_n,rs_n,tots_nac);
+    fillTcard('e',kf_e,rs_e,tots_ext);
 
-    const pctCont=d.totales.actasContabilizadas/100;
-    const votosPendGT=Math.round((d.totales.totalVotosValidos/pctCont)*(1-pctCont));
-    const tots_nac=d.tots_nac||{};
-    const pctContNac=(tots_nac.actasContabilizadas||0)/100;
+    const pctCont=totales.actasContabilizadas/100;
+    const votosPendGT=Math.round((totales.totalVotosValidos/pctCont)*(1-pctCont));
+    const pctContNac=(tots_nac&&tots_nac.actasContabilizadas||0)/100;
     const votosPendNac=pctContNac>0?Math.round((tots_nac.totalVotosValidos||0)/pctContNac*(1-pctContNac)):0;
-    const tots_ext=d.tots_ext||{};
-    const pctContExt=(tots_ext.actasContabilizadas||0)/100;
+    const pctContExt=(tots_ext&&tots_ext.actasContabilizadas||0)/100;
     const votosPendExt=pctContExt>0?Math.round((tots_ext.totalVotosValidos||0)/pctContExt*(1-pctContExt)):0;
 
     let netoKFExt=0;
-    if(d.kf_ext&&d.rs_ext&&d.kf_ext.votos>0) netoKFExt=Math.round(votosPendExt*((d.kf_ext.pct-d.rs_ext.pct)/100));
+    if(kf_e&&rs_e&&kf_e.votos>0) netoKFExt=Math.round(votosPendExt*((kf_e.pct-rs_e.pct)/100));
     let netoKFNac=0;
-    if(d.kf_nac&&d.rs_nac&&d.kf_nac.votos>0) netoKFNac=Math.round(votosPendNac*((d.kf_nac.pct-d.rs_nac.pct)/100));
+    if(kf_n&&rs_n&&kf_n.votos>0) netoKFNac=Math.round(votosPendNac*((kf_n.pct-rs_n.pct)/100));
 
-    const currentDiff=d.lider==='RS'?d.diff:-d.diff;
+    const currentDiff=lider==='RS'?diff:-diff;
     const margenFinal=currentDiff-netoKFExt-netoKFNac;
     const rsGana=margenFinal>0;
 
@@ -349,11 +376,11 @@ async function load(){
     document.getElementById('pbox-margen').textContent=(margenFinal>0?'RS +':'KF +')+fmt(Math.abs(Math.round(margenFinal)));
     document.getElementById('pbox-margen-sub').textContent='votos estimados al cierre';
     document.getElementById('pbox-pendientes').textContent=fmt(votosPendGT);
-    document.getElementById('pbox-pendientes-sub').textContent=fmt(d.totales.pendientesJee)+' actas · '+(100-d.totales.actasContabilizadas).toFixed(2)+'% restante';
+    document.getElementById('pbox-pendientes-sub').textContent=fmt(totales.pendientesJee)+' actas · '+(100-totales.actasContabilizadas).toFixed(2)+'% restante';
     document.getElementById('pbox-pend-nac').textContent=fmt(votosPendNac);
-    document.getElementById('pbox-pend-nac-sub').textContent=fmt(tots_nac.pendientesJee||0)+' actas pendientes Perú';
+    document.getElementById('pbox-pend-nac-sub').textContent=fmt((tots_nac&&tots_nac.pendientesJee)||0)+' actas pendientes Perú';
     document.getElementById('pbox-pend-ext').textContent=fmt(votosPendExt);
-    document.getElementById('pbox-pend-ext-sub').textContent=fmt(tots_ext.pendientesJee||0)+' actas pendientes ext.';
+    document.getElementById('pbox-pend-ext-sub').textContent=fmt((tots_ext&&tots_ext.pendientesJee)||0)+' actas pendientes ext.';
     document.getElementById('pbox-neto-ext').textContent=(netoKFExt>0?'KF +':'RS +')+fmt(Math.abs(netoKFExt));
     document.getElementById('pbox-neto-ext-sub').textContent='sobre votos pend. extranjero';
     document.getElementById('pbox-pct-rs').textContent='RS ~'+(rsGana?'50.1':'49.9')+'%';
@@ -361,13 +388,14 @@ async function load(){
 
   }catch(e){
     document.getElementById('dot').className='live-dot error';
-    document.getElementById('live-txt').textContent='SIN DATOS';
-    document.getElementById('error-banner').textContent='Sin datos disponibles aún. El servidor actualiza cada 5 minutos.';
-    document.getElementById('error-banner').style.display='block';
+    document.getElementById('live-txt').textContent='ERROR';
+    const eb=document.getElementById('error-banner');
+    eb.textContent='Error al cargar datos: '+e.message;
+    eb.style.display='block';
   }
 }
 load();
-setInterval(load, 300000);
+setInterval(load,120000);
 </script>
 </body>
 </html>
