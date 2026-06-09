@@ -18,7 +18,7 @@ def fetch(path):
         return json.loads(r.read().decode())["data"]
 
 def cand(arr, nombre):
-    p = next((x for x in arr if nombre in x["nombreCandidato"]), None)
+    p = next((x for x in arr if nombre in x.get("nombreCandidato","")), None)
     return {"votos": p["totalVotosValidos"], "pct": p["porcentajeVotosValidos"]} if p else None
 
 try:
@@ -48,10 +48,15 @@ try:
         "tots_ext": tots_ext, "kf_ext": kf_e, "rs_ext": rs_e,
         "diff": diff, "lider": lider,
     }
-    with open("datos.json", "w") as f:
-        json.dump(data, f, ensure_ascii=False)
     print("OK —", datetime.now().strftime("%H:%M:%S"))
 
 except Exception as e:
     print("ERROR:", e)
-    # Si falla, no sobreescribir datos.json para mantener últimos datos válidos
+    # Si hay datos anteriores los mantenemos, si no creamos un placeholder
+    if os.path.exists("datos.json"):
+        print("Manteniendo datos anteriores")
+        exit(0)
+    data = {"success": False, "error": str(e), "timestamp": datetime.now().strftime("%H:%M:%S")}
+
+with open("datos.json", "w") as f:
+    json.dump(data, f, ensure_ascii=False)
