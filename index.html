@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Monitor Electoral 2026 — El Método Rodri</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:#f5f5f5;color:#111;min-height:100vh;}
+.topbar{background:#fff;border-bottom:1px solid #e5e5e5;padding:12px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.logo{font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#c8102e;text-decoration:none;}
+.logo:hover{opacity:.8;}
+.topbar-title{font-size:14px;color:#555;margin-left:12px;}
+.topbar-right{display:flex;align-items:center;gap:12px;}
+.live-badge{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#16a34a;text-transform:uppercase;letter-spacing:.05em;}
+.live-dot{width:7px;height:7px;border-radius:50%;background:#16a34a;animation:pulse 1.5s infinite;}
+.live-dot.error{background:#dc2626;animation:none;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.update-time{font-size:12px;color:#999;}
+.refresh-btn{font-size:12px;background:#f0f0f0;border:1px solid #ddd;color:#333;padding:5px 12px;border-radius:6px;cursor:pointer;font-weight:500;}
+.refresh-btn:hover{background:#e5e5e5;}
+.main{max-width:980px;margin:0 auto;padding:24px 20px;}
+.error-banner{background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:12px 16px;font-size:13px;color:#dc2626;margin-bottom:16px;display:none;}
+.card{background:#fff;border:1px solid #e5e5e5;border-radius:12px;padding:20px 24px;margin-bottom:16px;}
+.actas-header{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;}
+.actas-pct{font-size:28px;font-weight:700;}
+.actas-label{font-size:13px;color:#777;}
+.actas-sub{font-size:13px;color:#999;}
+.progress-track{height:8px;background:#f0f0f0;border-radius:4px;overflow:hidden;}
+.progress-fill{height:100%;background:#111;border-radius:4px;transition:width 1s ease;}
+.candidates{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+.cand-card{background:#fff;border:1.5px solid #e5e5e5;border-radius:12px;padding:24px;position:relative;}
+.cand-card.leader{border-color:#111;}
+.cand-card.leader::after{content:'LIDERA';position:absolute;top:14px;right:14px;font-size:10px;font-weight:700;letter-spacing:.08em;color:#fff;background:#111;padding:3px 8px;border-radius:4px;}
+.cand-partido{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#999;margin-bottom:6px;}
+.cand-nombre{font-size:15px;font-weight:600;margin-bottom:16px;line-height:1.3;}
+.cand-pct{font-size:52px;font-weight:700;letter-spacing:-.03em;line-height:1;margin-bottom:6px;}
+.cand-pct.rs{color:#16a34a;}
+.cand-pct.kf{color:#f97316;}
+.cand-votos{font-size:13px;color:#777;}
+.bar-card{background:#fff;border:1px solid #e5e5e5;border-radius:12px;padding:16px 24px;margin-bottom:16px;}
+.bar-labels{display:flex;justify-content:space-between;font-size:12px;font-weight:600;margin-bottom:8px;}
+.bar-track{height:10px;background:#f0f0f0;border-radius:5px;overflow:hidden;display:flex;}
+.bar-rs{background:#16a34a;transition:width .8s ease;}
+.bar-kf{background:#f97316;transition:width .8s ease;}
+.diff-card{background:#fff;border:1px solid #e5e5e5;border-radius:12px;padding:18px 24px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;}
+.diff-num{font-size:32px;font-weight:700;}
+.diff-label{font-size:14px;color:#777;margin-left:10px;}
+.diff-meta{font-size:13px;color:#999;text-align:right;line-height:1.6;}
+.three-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:16px;}
+.tcard{background:#fff;border:1px solid #e5e5e5;border-radius:12px;padding:20px;}
+.tcard-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#999;margin-bottom:14px;display:flex;align-items:center;gap:6px;}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;}
+.dot-total{background:#111;}
+.dot-nac{background:#3b82f6;}
+.dot-ext{background:#8b5cf6;}
+.tcard-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+.tcard-cand{font-size:12px;color:#777;}
+.tcard-pct-rs{font-size:20px;font-weight:700;color:#16a34a;}
+.tcard-pct-kf{font-size:20px;font-weight:700;color:#f97316;}
+.tcard-bar{height:6px;border-radius:3px;overflow:hidden;display:flex;background:#f0f0f0;margin-bottom:10px;}
+.tcard-bar-rs{background:#16a34a;height:100%;}
+.tcard-bar-kf{background:#f97316;height:100%;}
+.tcard-meta{font-size:11px;color:#bbb;margin-top:8px;line-height:1.5;}
+.ipsos-card{background:#fff;border:1px solid #e5e5e5;border-radius:12px;padding:20px 24px;margin-bottom:16px;}
+.ipsos-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+.ipsos-title{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#555;}
+.ipsos-badge{font-size:11px;background:#f0f0f0;color:#666;padding:3px 10px;border-radius:20px;}
+.ipsos-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+.ibox{background:#f9f9f9;border-radius:10px;padding:14px;}
+.ibox-lbl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#999;margin-bottom:8px;}
+.ibox-row{display:flex;justify-content:space-between;margin-bottom:4px;}
+.ibox-rs{font-size:16px;font-weight:700;color:#16a34a;}
+.ibox-kf{font-size:16px;font-weight:700;color:#f97316;}
+.ibox-bar{height:5px;border-radius:3px;overflow:hidden;display:flex;background:#f0f0f0;margin-top:6px;}
+.ibox-bar-rs{background:#16a34a;height:100%;}
+.ibox-bar-kf{background:#f97316;height:100%;}
+.ibox-note{font-size:10px;color:#bbb;margin-top:6px;}
+.proj-card{background:#fff;border:1px solid #e5e5e5;border-radius:12px;padding:24px;margin-bottom:16px;}
+.proj-header{display:flex;align-items:center;gap:10px;margin-bottom:20px;}
+.proj-icon{width:32px;height:32px;background:#f5f5f5;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;}
+.proj-title{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#555;}
+.proj-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:12px;}
+.pbox{background:#f9f9f9;border-radius:10px;padding:16px;}
+.pbox.green{background:#f0fdf4;border:1px solid #bbf7d0;}
+.pbox.orange{background:#fff7ed;border:1px solid #fed7aa;}
+.pbox-lbl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#999;margin-bottom:6px;}
+.pbox.green .pbox-lbl{color:#16a34a;}
+.pbox.orange .pbox-lbl{color:#ea580c;}
+.pbox-val{font-size:20px;font-weight:700;margin-bottom:3px;}
+.pbox.green .pbox-val{color:#15803d;}
+.pbox.orange .pbox-val{color:#c2410c;}
+.pbox-sub{font-size:11px;color:#999;}
+.sources{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
+.source-tag{font-size:11px;background:#f0f0f0;color:#666;padding:4px 10px;border-radius:20px;}
+.footer{text-align:center;font-size:12px;color:#bbb;padding:20px 0 32px;line-height:1.8;}
+.footer a{color:#c8102e;text-decoration:none;font-weight:600;}
+.footer a:hover{text-decoration:underline;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div style="display:flex;align-items:center;">
+    <a class="logo" href="https://www.instagram.com/el.metodo.rodri/" target="_blank">El Método Rodri</a>
+    <span class="topbar-title">Monitor Electoral · Segunda Vuelta 2026</span>
+  </div>
+  <div class="topbar-right">
+    <div class="live-badge"><div class="live-dot" id="dot"></div><span id="live-txt">CARGANDO</span></div>
+    <span class="update-time" id="update-time"></span>
+    <button class="refresh-btn" onclick="load()">↻ Actualizar</button>
+  </div>
+</div>
+
+<div class="main">
+  <div class="error-banner" id="error-banner"></div>
+
+  <div class="card">
+    <div class="actas-header">
+      <div><span class="actas-pct" id="actas-pct">—%</span><span class="actas-label"> de actas contabilizadas</span></div>
+      <div class="actas-sub" id="actas-sub">—</div>
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+  </div>
+
+  <div class="candidates">
+    <div class="cand-card" id="card-rs">
+      <div class="cand-partido">Juntos por el Perú</div>
+      <div class="cand-nombre">Roberto Helbert Sánchez Palomino</div>
+      <div class="cand-pct rs" id="rs-pct">—%</div>
+      <div class="cand-votos" id="rs-votos">—</div>
+    </div>
+    <div class="cand-card" id="card-kf">
+      <div class="cand-partido">Fuerza Popular</div>
+      <div class="cand-nombre">Keiko Sofia Fujimori Higuchi</div>
+      <div class="cand-pct kf" id="kf-pct">—%</div>
+      <div class="cand-votos" id="kf-votos">—</div>
+    </div>
+  </div>
+
+  <div class="bar-card">
+    <div class="bar-labels">
+      <span style="color:#16a34a;" id="bar-rs-lbl">RS</span>
+      <span style="color:#f97316;" id="bar-kf-lbl">KF</span>
+    </div>
+    <div class="bar-track">
+      <div class="bar-rs" id="bar-rs" style="width:50%"></div>
+      <div class="bar-kf" id="bar-kf" style="width:50%"></div>
+    </div>
+  </div>
+
+  <div class="diff-card">
+    <div style="display:flex;align-items:baseline;">
+      <span class="diff-num" id="diff-num">—</span>
+      <span class="diff-label" id="diff-label"> votos de diferencia</span>
+    </div>
+    <div class="diff-meta" id="diff-meta">—</div>
+  </div>
+
+  <div class="three-grid">
+    <div class="tcard">
+      <div class="tcard-title"><span class="dot dot-total"></span>Gran Total</div>
+      <div class="tcard-row"><span class="tcard-cand">Sánchez (RS)</span><span class="tcard-pct-rs" id="t-rs-pct">—</span></div>
+      <div class="tcard-row"><span class="tcard-cand">Fujimori (KF)</span><span class="tcard-pct-kf" id="t-kf-pct">—</span></div>
+      <div class="tcard-bar"><div class="tcard-bar-rs" id="t-bar-rs" style="width:50%"></div><div class="tcard-bar-kf" id="t-bar-kf" style="width:50%"></div></div>
+      <div class="tcard-meta" id="t-meta">—</div>
+    </div>
+    <div class="tcard">
+      <div class="tcard-title"><span class="dot dot-nac"></span>Solo Perú 🇵🇪</div>
+      <div class="tcard-row"><span class="tcard-cand">Sánchez (RS)</span><span class="tcard-pct-rs" id="n-rs-pct">—</span></div>
+      <div class="tcard-row"><span class="tcard-cand">Fujimori (KF)</span><span class="tcard-pct-kf" id="n-kf-pct">—</span></div>
+      <div class="tcard-bar"><div class="tcard-bar-rs" id="n-bar-rs" style="width:50%"></div><div class="tcard-bar-kf" id="n-bar-kf" style="width:50%"></div></div>
+      <div class="tcard-meta" id="n-meta">—</div>
+    </div>
+    <div class="tcard">
+      <div class="tcard-title"><span class="dot dot-ext"></span>Extranjero 🌍</div>
+      <div class="tcard-row"><span class="tcard-cand">Sánchez (RS)</span><span class="tcard-pct-rs" id="e-rs-pct">—</span></div>
+      <div class="tcard-row"><span class="tcard-cand">Fujimori (KF)</span><span class="tcard-pct-kf" id="e-kf-pct">—</span></div>
+      <div class="tcard-bar"><div class="tcard-bar-rs" id="e-bar-rs" style="width:50%"></div><div class="tcard-bar-kf" id="e-bar-kf" style="width:50%"></div></div>
+      <div class="tcard-meta" id="e-meta">—</div>
+    </div>
+  </div>
+
+  <div class="ipsos-card">
+    <div class="ipsos-header">
+      <div class="ipsos-title">📋 Comparativa Conteo Rápido Ipsos / Transparencia</div>
+      <span class="ipsos-badge">100% de muestra · ±1.9 · 7 jun 2026</span>
+    </div>
+    <div class="ipsos-grid">
+      <div class="ibox">
+        <div class="ibox-lbl">Total Nacional</div>
+        <div class="ibox-row"><span class="ibox-rs">RS 50.3%</span><span class="ibox-kf">KF 49.7%</span></div>
+        <div class="ibox-bar"><div class="ibox-bar-rs" style="width:50.3%"></div><div class="ibox-bar-kf" style="width:49.7%"></div></div>
+        <div class="ibox-note">Empate técnico · Nacional + Extranjero</div>
+      </div>
+      <div class="ibox">
+        <div class="ibox-lbl">Lima</div>
+        <div class="ibox-row"><span class="ibox-rs">RS 36.4%</span><span class="ibox-kf">KF 63.6%</span></div>
+        <div class="ibox-bar"><div class="ibox-bar-rs" style="width:36.4%"></div><div class="ibox-bar-kf" style="width:63.6%"></div></div>
+        <div class="ibox-note">KF domina Lima</div>
+      </div>
+      <div class="ibox">
+        <div class="ibox-lbl">Regiones</div>
+        <div class="ibox-row"><span class="ibox-rs">RS 57.4%</span><span class="ibox-kf">KF 42.6%</span></div>
+        <div class="ibox-bar"><div class="ibox-bar-rs" style="width:57.4%"></div><div class="ibox-bar-kf" style="width:42.6%"></div></div>
+        <div class="ibox-note">RS domina regiones</div>
+      </div>
+      <div class="ibox">
+        <div class="ibox-lbl">Costa / Sierra / Selva</div>
+        <div style="font-size:11px;margin-bottom:4px;"><span style="color:#999;">Costa:</span> <span class="ibox-kf" style="font-size:13px;">KF 60.5%</span> <span class="ibox-rs" style="font-size:13px;">RS 39.5%</span></div>
+        <div style="font-size:11px;margin-bottom:4px;"><span style="color:#999;">Sierra:</span> <span class="ibox-rs" style="font-size:13px;">RS 70.2%</span> <span class="ibox-kf" style="font-size:13px;">KF 29.8%</span></div>
+        <div style="font-size:11px;"><span style="color:#999;">Selva:</span> <span class="ibox-rs" style="font-size:13px;">RS 58.6%</span> <span class="ibox-kf" style="font-size:13px;">KF 41.4%</span></div>
+        <div class="ibox-note">Datos referenciales</div>
+      </div>
+    </div>
+    <div style="margin-top:10px;font-size:11px;color:#bbb;">Conteo Rápido Integral 2026 · Ipsos Perú por encargo de Transparencia · colaboración NDI · 1,037 actas · confianza 95%</div>
+  </div>
+
+  <div class="proj-card">
+    <div class="proj-header">
+      <div class="proj-icon">📊</div>
+      <div class="proj-title">Proyección El Método Rodri</div>
+    </div>
+    <div class="proj-grid">
+      <div class="pbox" id="pbox-ganador">
+        <div class="pbox-lbl">Ganador proyectado</div>
+        <div class="pbox-val" id="pbox-ganador-val">—</div>
+        <div class="pbox-sub" id="pbox-ganador-sub">—</div>
+      </div>
+      <div class="pbox">
+        <div class="pbox-lbl">Margen final estimado</div>
+        <div class="pbox-val" id="pbox-margen">—</div>
+        <div class="pbox-sub" id="pbox-margen-sub">—</div>
+      </div>
+      <div class="pbox">
+        <div class="pbox-lbl">Votos pendientes Gran Total</div>
+        <div class="pbox-val" id="pbox-pendientes">—</div>
+        <div class="pbox-sub" id="pbox-pendientes-sub">—</div>
+      </div>
+      <div class="pbox">
+        <div class="pbox-lbl">Pendientes solo Perú</div>
+        <div class="pbox-val" id="pbox-pend-nac">—</div>
+        <div class="pbox-sub" id="pbox-pend-nac-sub">—</div>
+      </div>
+      <div class="pbox">
+        <div class="pbox-lbl">Pendientes extranjero</div>
+        <div class="pbox-val" id="pbox-pend-ext">—</div>
+        <div class="pbox-sub" id="pbox-pend-ext-sub">—</div>
+      </div>
+      <div class="pbox">
+        <div class="pbox-lbl">Neto KF sobre pend. ext.</div>
+        <div class="pbox-val" id="pbox-neto-ext">—</div>
+        <div class="pbox-sub" id="pbox-neto-ext-sub">—</div>
+      </div>
+    </div>
+    <div class="pbox" style="display:flex;justify-content:space-around;align-items:center;background:#f0f4ff;border:1px solid #c7d7f9;">
+      <div style="text-align:center;">
+        <div class="pbox-lbl">Porcentaje final proyectado (conteo rápido como ancla · ±1.9)</div>
+        <div style="display:flex;gap:32px;margin-top:6px;">
+          <div style="text-align:center;"><div class="pbox-val" id="pbox-pct-rs" style="color:#15803d;">—</div><div class="pbox-sub">Sánchez</div></div>
+          <div style="text-align:center;"><div class="pbox-val" id="pbox-pct-kf" style="color:#c2410c;">—</div><div class="pbox-sub">Fujimori</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="sources">
+      <span class="source-tag">ONPE — resultadosegundavuelta.onpe.gob.pe</span>
+      <span class="source-tag">Ipsos/Transparencia/NDI — Conteo Rápido 100%</span>
+      <span class="source-tag">Análisis: El Método Rodri</span>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  Datos oficiales ONPE · Actualización cada 5 minutos via GitHub Actions<br>
+  <a href="https://www.instagram.com/el.metodo.rodri/" target="_blank">@el.metodo.rodri</a> · El Método Rodri
+</div>
+
+<script>
+function fmt(n){return Number(n).toLocaleString('es-PE');}
+
+async function load(){
+  try{
+    const r = await fetch('datos.json?t='+Date.now());
+    const d = await r.json();
+    if(!d.success) throw new Error('Sin datos');
+
+    document.getElementById('error-banner').style.display='none';
+    document.getElementById('dot').className='live-dot';
+    document.getElementById('live-txt').textContent='EN VIVO';
+    document.getElementById('update-time').textContent='Actualizado: '+d.timestamp;
+
+    const pct=d.totales.actasContabilizadas.toFixed(3);
+    document.getElementById('actas-pct').textContent=pct+'%';
+    document.getElementById('actas-sub').textContent=fmt(d.totales.contabilizadas)+' de '+fmt(d.totales.totalActas)+' actas';
+    document.getElementById('progress-fill').style.width=pct+'%';
+
+    document.getElementById('rs-pct').textContent=d.rs.pct.toFixed(3)+'%';
+    document.getElementById('rs-votos').textContent=fmt(d.rs.votos)+' votos';
+    document.getElementById('kf-pct').textContent=d.kf.pct.toFixed(3)+'%';
+    document.getElementById('kf-votos').textContent=fmt(d.kf.votos)+' votos';
+    document.getElementById('card-rs').className=d.lider==='RS'?'cand-card leader':'cand-card';
+    document.getElementById('card-kf').className=d.lider==='KF'?'cand-card leader':'cand-card';
+    document.getElementById('bar-rs').style.width=d.rs.pct.toFixed(3)+'%';
+    document.getElementById('bar-kf').style.width=d.kf.pct.toFixed(3)+'%';
+    document.getElementById('bar-rs-lbl').textContent='RS '+d.rs.pct.toFixed(3)+'%';
+    document.getElementById('bar-kf-lbl').textContent='KF '+d.kf.pct.toFixed(3)+'%';
+
+    const liderNombre=d.lider==='RS'?'Roberto Sánchez':'Keiko Fujimori';
+    document.getElementById('diff-num').textContent=fmt(d.diff);
+    document.getElementById('diff-label').textContent=' votos de diferencia · '+liderNombre+' lidera';
+    const votosPendTotal=Math.round(d.totales.totalVotosValidos/(d.totales.actasContabilizadas/100)*((100-d.totales.actasContabilizadas)/100));
+    document.getElementById('diff-meta').innerHTML=fmt(d.totales.pendientesJee)+' actas pendientes<br>'+fmt(votosPendTotal)+' votos estimados por contar';
+
+    function fillTcard(prefix, kf, rs, tots){
+      if(!kf||!rs) return;
+      document.getElementById(prefix+'-rs-pct').textContent=rs.pct.toFixed(3)+'%';
+      document.getElementById(prefix+'-kf-pct').textContent=kf.pct.toFixed(3)+'%';
+      document.getElementById(prefix+'-bar-rs').style.width=rs.pct.toFixed(2)+'%';
+      document.getElementById(prefix+'-bar-kf').style.width=kf.pct.toFixed(2)+'%';
+      const pctC=tots.actasContabilizadas!=null?tots.actasContabilizadas.toFixed(1)+'% contabilizado':'—';
+      const pend=tots.pendientesJee!=null?fmt(tots.pendientesJee)+' actas pend.':'';
+      document.getElementById(prefix+'-meta').textContent=pctC+(pend?' · '+pend:'');
+    }
+    fillTcard('t', d.kf, d.rs, d.totales);
+    fillTcard('n', d.kf_nac, d.rs_nac, d.tots_nac||{});
+    fillTcard('e', d.kf_ext, d.rs_ext, d.tots_ext||{});
+
+    const pctCont=d.totales.actasContabilizadas/100;
+    const votosPendGT=Math.round((d.totales.totalVotosValidos/pctCont)*(1-pctCont));
+    const tots_nac=d.tots_nac||{};
+    const pctContNac=(tots_nac.actasContabilizadas||0)/100;
+    const votosPendNac=pctContNac>0?Math.round((tots_nac.totalVotosValidos||0)/pctContNac*(1-pctContNac)):0;
+    const tots_ext=d.tots_ext||{};
+    const pctContExt=(tots_ext.actasContabilizadas||0)/100;
+    const votosPendExt=pctContExt>0?Math.round((tots_ext.totalVotosValidos||0)/pctContExt*(1-pctContExt)):0;
+
+    let netoKFExt=0;
+    if(d.kf_ext&&d.rs_ext&&d.kf_ext.votos>0) netoKFExt=Math.round(votosPendExt*((d.kf_ext.pct-d.rs_ext.pct)/100));
+    let netoKFNac=0;
+    if(d.kf_nac&&d.rs_nac&&d.kf_nac.votos>0) netoKFNac=Math.round(votosPendNac*((d.kf_nac.pct-d.rs_nac.pct)/100));
+
+    const currentDiff=d.lider==='RS'?d.diff:-d.diff;
+    const margenFinal=currentDiff-netoKFExt-netoKFNac;
+    const rsGana=margenFinal>0;
+
+    document.getElementById('pbox-ganador').className='pbox '+(rsGana?'green':'orange');
+    document.getElementById('pbox-ganador-val').textContent=rsGana?'Roberto Sánchez':'Keiko Fujimori';
+    document.getElementById('pbox-ganador-sub').textContent='~'+(rsGana?'50.1':'49.9')+'% · '+(rsGana?'Juntos por el Perú':'Fuerza Popular');
+    document.getElementById('pbox-margen').textContent=(margenFinal>0?'RS +':'KF +')+fmt(Math.abs(Math.round(margenFinal)));
+    document.getElementById('pbox-margen-sub').textContent='votos estimados al cierre';
+    document.getElementById('pbox-pendientes').textContent=fmt(votosPendGT);
+    document.getElementById('pbox-pendientes-sub').textContent=fmt(d.totales.pendientesJee)+' actas · '+(100-d.totales.actasContabilizadas).toFixed(2)+'% restante';
+    document.getElementById('pbox-pend-nac').textContent=fmt(votosPendNac);
+    document.getElementById('pbox-pend-nac-sub').textContent=fmt(tots_nac.pendientesJee||0)+' actas pendientes Perú';
+    document.getElementById('pbox-pend-ext').textContent=fmt(votosPendExt);
+    document.getElementById('pbox-pend-ext-sub').textContent=fmt(tots_ext.pendientesJee||0)+' actas pendientes ext.';
+    document.getElementById('pbox-neto-ext').textContent=(netoKFExt>0?'KF +':'RS +')+fmt(Math.abs(netoKFExt));
+    document.getElementById('pbox-neto-ext-sub').textContent='sobre votos pend. extranjero';
+    document.getElementById('pbox-pct-rs').textContent='RS ~'+(rsGana?'50.1':'49.9')+'%';
+    document.getElementById('pbox-pct-kf').textContent='KF ~'+(rsGana?'49.9':'50.1')+'%';
+
+  }catch(e){
+    document.getElementById('dot').className='live-dot error';
+    document.getElementById('live-txt').textContent='SIN DATOS';
+    document.getElementById('error-banner').textContent='Sin datos disponibles aún. El servidor actualiza cada 5 minutos.';
+    document.getElementById('error-banner').style.display='block';
+  }
+}
+load();
+setInterval(load, 300000);
+</script>
+</body>
+</html>
